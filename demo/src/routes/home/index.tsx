@@ -84,11 +84,13 @@ const Home = () => {
     } else if (score > 0.8) {
       setToastMessage('It\'s a not a bad match!')
     } else if (score > 0.7) {
-      setToastMessage('It\'s a okay match')
-    } else if (score < 0.6) {
+      setToastMessage('It\'s an okay match')
+    } else if (score > 0.6) {
       setToastMessage('It\'s a weak match')
-    } else if (score < 0.5) {
+    } else if (score > 0.5) {
       setToastMessage('It\'s a bad match')
+    } else if (score < 0.4) {
+      setToastMessage('It\'s a not a match')
     }
 
     setComparison(score)
@@ -128,13 +130,13 @@ const Home = () => {
     }, 3000)
   }, [draw, order, setScore, map])
 
+  // Add the initial random polygon
   useEffect(() => {
     if (!draw || !map || draw.hasFeature(randomPolygonId)) {
       return;
     }
 
     draw.setMode('polygon')
-
     const randomPolygon = polygons[order] as GeoJSONStoreFeatures
     randomPolygon.id = randomPolygonId
     randomPolygon.properties.mode = 'polygon'
@@ -142,14 +144,13 @@ const Home = () => {
     map?.panTo(centroid(randomPolygon.geometry as Polygon).geometry.coordinates as any, { duration: 0 })
   }, [draw, map, order])
 
+  // Handle the on finish event
   useEffect(() => {
     if (!draw || !map) {
       return;
     }
 
-
     draw.on("finish", matchCallback);
-
 
     return () => {
       draw.off("finish", matchCallback);
@@ -161,7 +162,7 @@ const Home = () => {
   return (
     <div className={style.home} >
       <div ref={ref} className={style.map} id={mapOptions.id}>
-        {toastMessage ? <div className={style.toast}>{toastMessage}</div> : null}
+        {toastMessage ? <div className={style.toast}><strong>{toastMessage}</strong></div> : null}
         <div className={style.info}>
           <p>
             Terra Match compares two polygons and gives a matching score from 0 - 1 representing the similarity of the polygons. Try tracing the polygon outlined to see it in action.
