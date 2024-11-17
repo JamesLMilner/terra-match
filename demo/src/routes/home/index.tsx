@@ -171,8 +171,11 @@ const Home = () => {
       <div ref={ref} className={style.map} id={mapOptions.id}>
         {toastMessage ? <div className={style.toast}><strong>{toastMessage}</strong></div> : null}
         <div className={style.info}>
+          <p className={style.firstPara}>
+            Terra Match compares two polygons and gives a matching score from 0 - 1 representing the similarity of the polygons.
+          </p>
           <p>
-            Terra Match compares two polygons and gives a matching score from 0 - 1 representing the similarity of the polygons. Try tracing the polygon outlined to see it in action.
+            Try tracing the polygon outlined to return a similarity score.
           </p>
           <br />
           <strong>Best match:</strong> {highScore.toFixed(2)}
