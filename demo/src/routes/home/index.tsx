@@ -12,7 +12,7 @@ import maplibregl from "maplibre-gl";
 import { randomPolygonId, setupDraw } from "./setup-draw";
 import { setupMaplibreMap } from "./setup-maplibre";
 import { terraMatch } from "../../../../src";
-import { Polygon, Feature, } from "geojson";
+import { Polygon, Feature, GeoJsonProperties, } from "geojson";
 import { GeoJSONStoreFeatures } from "terra-draw";
 import { FeatureId } from "terra-draw/dist/store/store";
 import { polygonADiamond, polygonAHexagon, polygonARhombus, polygonASquare, polygonATriangle } from "../../../../src/fixtures";
@@ -25,7 +25,7 @@ const mapOptions = {
   zoom: 7
 };
 
-const shuffle = (array: any[]) => {
+const shuffle: <T>(array: T[]) => T[] = (array) => {
   let currentIndex = array.length, randomIndex;
 
   while (currentIndex !== 0) {
@@ -38,14 +38,13 @@ const shuffle = (array: any[]) => {
   return array;
 }
 
-const polygons = shuffle([
+const polygons: Feature<Polygon, GeoJsonProperties>[] = shuffle([
   polygonADiamond,
   polygonASquare,
   polygonAHexagon,
   polygonARhombus,
   polygonATriangle
 ])
-
 
 const Home = () => {
   const ref = useRef(null);
@@ -97,11 +96,10 @@ const Home = () => {
   }, [highScore])
 
   const matchCallback = useCallback(() => {
-    if (!draw || !map) {
+    if (!draw || !map || !setScore) {
       return;
     }
 
-    setOrder(order === polygons.length - 1 ? 0 : order + 1)
     const snapshot = draw.getSnapshot();
 
     const outlinePolygon = snapshot[0] as Feature<Polygon>
@@ -111,23 +109,32 @@ const Home = () => {
 
     setScore(score)
 
-    setTimeout(() => {
+    const staticTimeout = setTimeout(() => {
       draw.setMode('static')
-    }, 0);
+    })
 
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       draw.setMode('polygon')
 
       draw.removeFeatures([firstPolygon.id as FeatureId, randomPolygonId as FeatureId])
 
-      const nextRandomPolygon = polygons[Math.floor(Math.random() * polygons.length)] as GeoJSONStoreFeatures
+      const nextRandomPolygon = polygons[order] as GeoJSONStoreFeatures
       nextRandomPolygon.id = randomPolygonId
       nextRandomPolygon.properties.mode = 'polygon'
       draw.addFeatures([nextRandomPolygon])
       map?.panTo(centroid(nextRandomPolygon.geometry as Polygon).geometry.coordinates as any, { duration: 0 })
       setComparison(0)
       setToastMessage(null)
+
+      setOrder((order) => order === polygons.length - 1 ? 0 : order + 1)
+
     }, 3000)
+
+    return () => {
+      clearTimeout(staticTimeout)
+      clearTimeout(timeout)
+    }
+
   }, [draw, order, setScore, map])
 
   // Add the initial random polygon
