@@ -1,5 +1,5 @@
 import { LineString, Polygon, Position } from 'geojson';
-import * as turf from '@turf/turf';
+import { bbox, cleanCoords } from '@turf/turf';
 
 type DistanceMetric = (p1: Position, p2: Position) => number
 
@@ -33,7 +33,7 @@ export function terraMatch(P: Polygon, Q: Polygon, options: {
         decay = 'exponential'
     } = options
 
-    const bbox = turf.bbox({
+    const boundingBox = bbox({
         type: "FeatureCollection", features: [
             { type: "Feature", geometry: P, properties: {} },
             { type: "Feature", geometry: Q, properties: {} }
@@ -41,7 +41,7 @@ export function terraMatch(P: Polygon, Q: Polygon, options: {
     });
 
     if (cleanRedundant) {
-        turf.cleanCoords(Q, { mutate: true });
+        cleanCoords(Q, { mutate: true });
     }
 
     const QPermutations = checkPermutations ? generateGeometryCoordinatePermutations(Q) : [Q];
@@ -59,7 +59,7 @@ export function terraMatch(P: Polygon, Q: Polygon, options: {
     }
 
 
-    const bboxDistance = distanceMetric([bbox[0], bbox[1]], [bbox[2], bbox[3]]);
+    const bboxDistance = distanceMetric([boundingBox[0], boundingBox[1]], [boundingBox[2], boundingBox[3]]);
 
     return decay === 'linear' ? linearDecayFunction(smallestDistance, bboxDistance) : exponentialDecayFunction(smallestDistance, bboxDistance);
 }

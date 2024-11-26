@@ -1,5 +1,5 @@
 import * as turf from '@turf/turf';
-import { exponentialDecayFunction, generateGeometryCoordinatePermutations, terraMatch } from './terra'; // Adjust the import path as necessary
+import { exponentialDecayFunction, generateGeometryCoordinatePermutations, terraMatch } from './terra-match'; // Adjust the import path as necessary
 import { testLineStrings, polygons, lineStrings, testPolygons } from './fixtures';
 
 

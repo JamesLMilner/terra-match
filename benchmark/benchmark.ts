@@ -1,5 +1,13 @@
-import { terraMatch } from "./index";
-import { polygonASquare, polygonATriangle, polygonADiamond, polygonAHexagon, polygonARhombus, polygonACircle, polygonAStar } from "./fixtures";
+import { terraMatch } from "./../src/terra-match";
+import {
+    polygonASquare,
+    polygonATriangle,
+    polygonADiamond,
+    polygonAHexagon,
+    polygonARhombus,
+    polygonACircle,
+    polygonAStar
+} from "./../src/fixtures";
 import * as turf from "@turf/turf";
 
 const testPolygons = [
