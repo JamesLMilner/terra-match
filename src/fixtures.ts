@@ -1,4 +1,5 @@
 import { Feature, Polygon } from "geojson";
+import * as turf from '@turf/turf';
 
 export const polygonASquare: Feature<Polygon> = {
     type: "Feature",
@@ -175,3 +176,30 @@ export const irregularPolygonB: Feature<Polygon> = {
         ]
     }
 };
+
+export const testPolygons = {
+    'square': polygonASquare,
+    'triangle': polygonATriangle,
+    'diamond': polygonADiamond,
+    'hexagon': polygonAHexagon,
+    'rhombus': polygonARhombus,
+    'circle': polygonACircle,
+    'star': polygonAStar,
+    'irregular': irregularPolygonB,
+} as const
+export const polygons = Object.keys(testPolygons) as (keyof typeof testPolygons)[]
+
+const createLineString = (p: Feature<Polygon>) => turf.lineString(p.geometry.coordinates[0].slice(0, -1))
+
+export const testLineStrings = {
+    'square': createLineString(polygonASquare),
+    'triangle': createLineString(polygonATriangle),
+    'diamond': createLineString(polygonADiamond),
+    'hexagon': createLineString(polygonAHexagon),
+    'rhombus': createLineString(polygonARhombus),
+    'circle': createLineString(polygonACircle),
+    'star': createLineString(polygonAStar),
+    'irregular': createLineString(irregularPolygonB),
+} as const
+export const lineStrings = Object.keys(testLineStrings) as (keyof typeof testLineStrings)[]
+

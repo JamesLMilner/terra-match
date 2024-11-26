@@ -1,19 +1,7 @@
 import * as turf from '@turf/turf';
-import { exponentialDecayFunction, frechetDistance, generatePolygonCoordinatePermutations, terraMatch } from './index'; // Adjust the import path as necessary
-import { polygonASquare, polygonATriangle, polygonADiamond, polygonAHexagon, polygonARhombus, irregularPolygonB, polygonACircle, polygonB, smallPolygonB, polygonAStar } from './fixtures';
+import { exponentialDecayFunction, generateGeometryCoordinatePermutations, terraMatch } from './terra'; // Adjust the import path as necessary
+import { testLineStrings, polygons, lineStrings, testPolygons } from './fixtures';
 
-const testPolygons = {
-    'square': polygonASquare,
-    'triangle': polygonATriangle,
-    'diamond': polygonADiamond,
-    'hexagon': polygonAHexagon,
-    'rhombus': polygonARhombus,
-    'circle': polygonACircle,
-    'star': polygonAStar,
-    'irregular': irregularPolygonB,
-} as const
-
-const polygons = Object.keys(testPolygons) as (keyof typeof testPolygons)[]
 
 describe('decayFunction', () => {
     it("0% of distance should be 1", () => {
@@ -55,7 +43,7 @@ describe('decayFunction', () => {
 
 describe('generatePolygonCoordinatePermutations', () => {
     it.each(polygons)('can generate coordinate permutations for a %s polygon', (polygon) => {
-        const result = generatePolygonCoordinatePermutations(testPolygons[polygon].geometry)
+        const result = generateGeometryCoordinatePermutations(testPolygons[polygon].geometry)
         const testPolygonInnerCoords = testPolygons[polygon].geometry.coordinates[0]
 
         const seen = new Set<string>()
@@ -91,6 +79,43 @@ describe('generatePolygonCoordinatePermutations', () => {
 
         const nonStartingCoordinates = testPolygons[polygon].geometry.coordinates[0].length - 2
         expect(result.length).toBe((nonStartingCoordinates) * 2 + 1)
+    })
+
+    it.each(lineStrings)('can generate coordinate permutations for a %s linestring', (linestring) => {
+        const testLineString = testLineStrings[linestring]
+        const result = generateGeometryCoordinatePermutations(testLineString.geometry)
+
+        const seen = new Set<string>()
+        result.forEach((permutedLinestring) => {
+            expect(permutedLinestring.type).toBe("LineString")
+            expect(permutedLinestring.coordinates.length).toEqual(testLineString.geometry.coordinates.length)
+            const key = JSON.stringify(permutedLinestring.coordinates)
+            expect(seen.has(key)).toBe(false)
+            seen.add(key)
+        })
+
+        // Example: 
+        // [ 0, 0 ], [ 1, 0 ], [ 1, 1 ], [ 0, 1 ],  
+
+        // Forward:
+
+        // [ 1, 0 ], [ 1, 1 ], [ 0, 1 ], [ 0, 0 ]
+
+        // [ 1, 1 ], [ 0, 1 ], [ 0, 0 ], [ 1, 0 ]
+
+        // [ 0, 1 ], [ 0, 0 ], [ 1, 0 ], [ 1, 1 ]
+
+        // Backward
+
+        // [ 0, 0 ], [ 0, 1 ], [ 1, 1 ], [ 1, 0 ]
+
+        // [ 0, 1 ], [ 1, 1 ], [ 1, 0 ], [ 0, 0 ]
+
+        // [ 1, 1 ], [ 1, 0 ], [ 0, 0 ], [ 0, 1 ]
+
+        // [ 1, 0 ], [ 0, 0 ], [ 0, 1 ], [ 1, 1 ]
+
+        expect(result.length).toBe(testLineString.geometry.coordinates.length * 2)
     })
 })
 

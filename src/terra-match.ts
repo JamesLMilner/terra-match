@@ -1,4 +1,4 @@
-import { Polygon, Position } from 'geojson';
+import { LineString, Polygon, Position } from 'geojson';
 import * as turf from '@turf/turf';
 
 type DistanceMetric = (p1: Position, p2: Position) => number
@@ -44,7 +44,7 @@ export function terraMatch(P: Polygon, Q: Polygon, options: {
         turf.cleanCoords(Q, { mutate: true });
     }
 
-    const QPermutations = checkPermutations ? generatePolygonCoordinatePermutations(Q) : [Q];
+    const QPermutations = checkPermutations ? generateGeometryCoordinatePermutations(Q) : [Q];
     const QWithPermutations = [Q, ...QPermutations]
 
     let smallestDistance = Infinity;
@@ -68,51 +68,54 @@ export function terraMatch(P: Polygon, Q: Polygon, options: {
  * Compute discrete Fréchet distance between two polygon Position sequences
  */
 export function frechetDistance(
-    polygon1: Polygon,
-    polygon2: Polygon,
+    polygon1: Polygon | LineString,
+    polygon2: Polygon | LineString,
     options: { distanceMetric: DistanceMetric } = { distanceMetric: haversineDistance }
 ): number {
     const { distanceMetric } = options;
 
-    const numVerticesPolygon1 = polygon1.coordinates[0].length;
-    const numVerticesPolygon2 = polygon2.coordinates[0].length;
+    const coordinatesOne = polygon1.type === 'Polygon' ? polygon1.coordinates[0] : polygon1.coordinates
+    const coordinatesTwo = polygon2.type === 'Polygon' ? polygon2.coordinates[0] : polygon2.coordinates
+
+    const numVerticesPolygon1 = coordinatesOne.length;
+    const numVerticesPolygon2 = coordinatesTwo.length;
 
     const memoizationTable: number[][] = Array.from({ length: numVerticesPolygon1 }, () => Array(numVerticesPolygon2).fill(-1));
 
-    function calculateFrechetDistance(index1: number, index2: number): number {
+    function calculateFrechetDistance(indexOne: number, indexTwo: number): number {
         // Base cases
-        if (memoizationTable[index1][index2] !== -1) {
-            return memoizationTable[index1][index2];
+        if (memoizationTable[indexOne][indexTwo] !== -1) {
+            return memoizationTable[indexOne][indexTwo];
         }
 
-        if (index1 === 0 && index2 === 0) {
-            memoizationTable[index1][index2] = distanceMetric(
-                polygon1.coordinates[0][0],
-                polygon2.coordinates[0][0]
+        if (indexOne === 0 && indexTwo === 0) {
+            memoizationTable[indexOne][indexTwo] = distanceMetric(
+                coordinatesOne[0],
+                coordinatesTwo[0]
             );
-        } else if (index1 > 0 && index2 === 0) {
-            memoizationTable[index1][index2] = Math.max(
-                calculateFrechetDistance(index1 - 1, 0),
-                distanceMetric(polygon1.coordinates[0][index1], polygon2.coordinates[0][0])
+        } else if (indexOne > 0 && indexTwo === 0) {
+            memoizationTable[indexOne][indexTwo] = Math.max(
+                calculateFrechetDistance(indexOne - 1, 0),
+                distanceMetric(coordinatesOne[indexOne], coordinatesTwo[0])
             );
-        } else if (index1 === 0 && index2 > 0) {
-            memoizationTable[index1][index2] = Math.max(
-                calculateFrechetDistance(0, index2 - 1),
-                distanceMetric(polygon1.coordinates[0][0], polygon2.coordinates[0][index2])
+        } else if (indexOne === 0 && indexTwo > 0) {
+            memoizationTable[indexOne][indexTwo] = Math.max(
+                calculateFrechetDistance(0, indexTwo - 1),
+                distanceMetric(coordinatesOne[0], coordinatesTwo[indexTwo])
             );
-        } else if (index1 > 0 && index2 > 0) {
-            memoizationTable[index1][index2] = Math.max(
+        } else if (indexOne > 0 && indexTwo > 0) {
+            memoizationTable[indexOne][indexTwo] = Math.max(
                 Math.min(
-                    calculateFrechetDistance(index1 - 1, index2),
-                    calculateFrechetDistance(index1 - 1, index2 - 1),
-                    calculateFrechetDistance(index1, index2 - 1)
+                    calculateFrechetDistance(indexOne - 1, indexTwo),
+                    calculateFrechetDistance(indexOne - 1, indexTwo - 1),
+                    calculateFrechetDistance(indexOne, indexTwo - 1)
                 ),
-                distanceMetric(polygon1.coordinates[0][index1], polygon2.coordinates[0][index2])
+                distanceMetric(coordinatesOne[indexOne], coordinatesTwo[indexTwo])
             );
         } else {
-            memoizationTable[index1][index2] = Infinity;
+            memoizationTable[indexOne][indexTwo] = Infinity;
         }
-        return memoizationTable[index1][index2];
+        return memoizationTable[indexOne][indexTwo];
     }
 
     const frechetDistanceValue = calculateFrechetDistance(numVerticesPolygon1 - 1, numVerticesPolygon2 - 1);
@@ -135,39 +138,42 @@ export function linearDecayFunction(distance: number, maxDistance: number): numb
     return 1 - cappedDistance / maxDistance;
 }
 
-export function generatePolygonCoordinatePermutations(polygon: Polygon): Polygon[] {
+export function generateGeometryCoordinatePermutations<T extends Polygon | LineString>(geometry: T): T[] {
     // Check if the polygon has coordinates
-    if (!polygon.coordinates || polygon.coordinates.length === 0) {
+    if (!geometry.coordinates || geometry.coordinates.length === 0) {
         return [];
     }
 
-    const coordinates = polygon.coordinates[0].slice(0, -1); // Get the first ring of the polygon
+    const coordinates = geometry.type === 'Polygon' ? geometry.coordinates[0].slice(0, -1) : geometry.coordinates.slice(0) // Get the first ring of the polygon
 
     const n = coordinates.length;
 
     // Array to hold all permutations
-    const permutations: Polygon[] = [];
+    const permutations: T[] = [];
 
     // Generate all permutations by rotating the coordinates
     for (let i = 0; i < n; i++) {
 
         const permutedCoordinates = [...coordinates.slice(i), ...coordinates.slice(0, i)];
-        permutedCoordinates.push(permutedCoordinates[0])
 
-        if (i !== 0) {
+        if (geometry.type === 'Polygon') {
+            permutedCoordinates.push(permutedCoordinates[0])
+        }
+
+        if (geometry.type === 'LineString' || i !== 0) {
             // Create a new permutation starting from the i-th vertex
             permutations.push({
-                type: 'Polygon',
-                coordinates: [permutedCoordinates] // Wrap in an array for GeoJSON format
-            });
+                type: geometry.type,
+                coordinates: geometry.type === 'Polygon' ? [permutedCoordinates] : permutedCoordinates // Wrap in an array for GeoJSON format
+            } as T);
         }
 
         // Create and add the reverse permutation
         const reversedCoordinates = [...permutedCoordinates].reverse();
         permutations.push({
-            type: 'Polygon',
-            coordinates: [reversedCoordinates] // Wrap in an array for GeoJSON format
-        });
+            type: geometry.type,
+            coordinates: geometry.type === 'Polygon' ? [reversedCoordinates] : reversedCoordinates // Wrap in an array for GeoJSON format
+        } as T);
 
     }
 
